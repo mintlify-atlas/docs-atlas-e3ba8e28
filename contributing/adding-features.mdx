@@ -1,0 +1,220 @@
+---
+title: "Developer guide: extending CS2 WebRadar with new features"
+description: "Step-by-step guide to adding settings toggles, wiring new WebSocket data fields, and creating map overlay components in the CS2 WebRadar React codebase."
+---
+
+CS2 WebRadar's frontend is a React 18 single-page app built with Vite and styled with TailwindCSS. It connects to the C++ backend over a vanilla WebSocket and re-renders on every game tick. This page walks through the patterns you need to add new features without breaking existing ones.
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Framework | React 18 |
+| Build tool | Vite 4 |
+| Styling | TailwindCSS 3 |
+| Real-time data | Vanilla WebSocket (`ws` package for the relay) |
+| Script runner | `concurrently` — starts both the WS relay and Vite in one command |
+
+## Dev environment setup
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/Kava4/cs2-webradar.git
+    cd cs2-webradar
+    ```
+  </Step>
+  <Step title="Install frontend dependencies">
+    Run the included helper script on Windows, or install manually:
+
+    ```bash
+    # Windows (recommended)
+    install.bat
+
+    # Manual
+    cd webapp && npm install
+    ```
+  </Step>
+  <Step title="Start the dev server">
+    This starts both the WebSocket relay (`ws/app.js`) and the Vite dev server concurrently:
+
+    ```bash
+    # Windows
+    start.bat
+
+    # Manual
+    cd webapp && npm run dev
+    ```
+
+    Open `http://localhost:5173` in your browser. Changes to `.jsx` files hot-reload automatically.
+  </Step>
+</Steps>
+
+## Adding a display toggle to settings
+
+Every visual option in the settings panel is controlled by a key in `DEFAULT_SETTINGS` in `app.jsx`. Adding a new toggle takes three steps.
+
+**1. Register the default value**
+
+Open `webapp/src/app.jsx` and add your key to `DEFAULT_SETTINGS`:
+
+```jsx
+const DEFAULT_SETTINGS = {
+  dotSize: 1,
+  bombSize: 0.5,
+  coneLength: 1,
+  showAllNames: false,
+  showEnemyNames: true,
+  showViewCones: false,
+  showGrenades: true,
+  showSmoke: true,
+  showFire: true,
+  showGrenadeLabels: true,
+  showHealthBars: true,
+  showAmmo: true,
+  showArmor: true,
+  showPing: true,
+  showMoney: true,
+  showFlashEffect: true,
+  showBombTimer: true,
+  showKillFeed: true,
+  showTCards: true,
+  showCTCards: true,
+  // add your key here, e.g.:
+  showMyFeature: true,
+};
+```
+
+Settings are persisted to `localStorage` automatically — no extra code needed.
+
+**2. Add a toggle to the settings panel**
+
+Open `webapp/src/components/SettingsButton.jsx` (or whichever component renders settings controls) and add a `<Toggle>` entry:
+
+```jsx
+<Toggle
+  label="My feature"
+  desc="Short description shown in the settings panel"
+  checked={settings.showMyFeature ?? true}
+  onChange={e => upd("showMyFeature", e.target.checked)}
+/>
+```
+
+**3. Consume the setting in your component**
+
+Read `settings.showMyFeature` wherever you render the feature, and bail out early when it is disabled:
+
+```jsx
+if (settings?.showMyFeature === false) return null;
+```
+
+## Adding a new data field from the backend
+
+The C++ backend sends a JSON payload on every tick. `app.jsx` receives it in `ws.onmessage` and distributes the top-level fields to React state:
+
+```jsx
+ws.onmessage = async (event) => {
+  const parsedData = JSON.parse(await event.data.text());
+  setPlayerArray(parsedData.m_players);
+  setLocalTeam(parsedData.m_local_team);
+  setBombData(parsedData.m_bomb);
+  setGrenadeArray(parsedData.m_grenades ?? []);
+  setRoundInfo(parsedData.m_round_info ?? null);
+  // extract your new field here:
+  // setMyField(parsedData.m_my_field ?? defaultValue);
+};
+```
+
+To wire up a new field end-to-end:
+
+<Steps>
+  <Step title="Add the field in the C++ backend">
+    Populate the new key in the JSON object built by `features.cpp`. Refer to the schema fields listed in `TODO.md` for available offsets.
+  </Step>
+  <Step title="Extract the field in onmessage">
+    Destructure or read the new key from `parsedData` and call the corresponding `useState` setter.
+  </Step>
+  <Step title="Pass it down as a prop">
+    Add the state value to the props passed into `<Radar>`, `<Scoreboard>`, or whichever component needs it.
+  </Step>
+</Steps>
+
+## Adding a new map overlay component
+
+Map overlays (player dots, bomb icons, grenade paths) are positioned absolutely inside a container that fills the radar image. The helper function `getRadarPosition` translates CS2 world coordinates into a 0.0–1.0 normalized position within that container.
+
+### getRadarPosition
+
+```jsx
+// webapp/src/utilities/utilities.jsx
+export const getRadarPosition = (mapData, entityCoords) => {
+  if (!entityCoords.x || !entityCoords.y) {
+    return { x: 0, y: 0 };
+  }
+
+  if (!mapData.x || !mapData.y) {
+    return { x: 0, y: 0 };
+  }
+
+  const position = {
+    x: (entityCoords.x - mapData.x) / mapData.scale / 1024,
+    y: (((entityCoords.y - mapData.y) / mapData.scale) * -1.0) / 1024,
+  };
+
+  return position;
+};
+```
+
+`mapData` comes from each map's `data.json` file (loaded in `app.jsx` when the map changes) and contains the `x`, `y`, and `scale` values that define the radar image's world-space origin and units-per-pixel ratio.
+
+### Creating the component
+
+<Steps>
+  <Step title="Create the component file">
+    Add a new file in `webapp/src/components/`, for example `MyOverlay.jsx`.
+  </Step>
+  <Step title="Project world coordinates to screen space">
+    Call `getRadarPosition` for each entity you want to place on the map:
+
+    ```jsx
+    import { getRadarPosition } from "../utilities/utilities";
+
+    const MyOverlay = ({ mapData, entities }) => (
+      <>
+        {entities.map((entity, i) => {
+          const pos = getRadarPosition(mapData, entity.m_pos);
+          return (
+            <div
+              key={i}
+              style={{
+                position: "absolute",
+                left: `${pos.x * 100}%`,
+                top:  `${pos.y * 100}%`,
+                transform: "translate(-50%, -50%)",
+              }}
+            >
+              {/* your visual here */}
+            </div>
+          );
+        })}
+      </>
+    );
+
+    export default MyOverlay;
+    ```
+  </Step>
+  <Step title="Mount the component inside the radar entity layer">
+    Open `webapp/src/components/radar.jsx`, import your component, and render it inside the entity layer `<div>` alongside the existing overlays:
+
+    ```jsx
+    import MyOverlay from "./MyOverlay";
+
+    // inside the entity layer div:
+    <MyOverlay mapData={mapData} entities={myEntities} />
+    ```
+  </Step>
+</Steps>
+
+<Tip>
+Keep each overlay as a separate component. The radar layer is a simple stacking context — components render in import order, so place higher-priority overlays later in the JSX to ensure they appear on top.
+</Tip>

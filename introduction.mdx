@@ -1,0 +1,39 @@
+---
+title: "CS2 WebRadar introduction: what it is and how it works"
+description: "CS2 WebRadar streams Counter-Strike 2 game state to a React interface over WebSockets. Runs locally — no cloud accounts, no external servers required."
+---
+
+CS2 WebRadar is an open-source, browser-based radar for Counter-Strike 2. It runs entirely on your own machine — no external servers, no cloud accounts — and streams live game data to a React web interface you open in any browser.
+
+## How the two components work together
+
+CS2 WebRadar is built from two pieces that work together.
+
+**C++ backend (`cs2_webradar.exe`)** reads player positions, health, weapons, bomb state, and grenade data directly from the CS2 process memory. It broadcasts that data over a WebSocket server on port `22006`, using the path `/cs2_webradar`.
+
+**React web interface** connects to that WebSocket and renders a live, interactive map overlay. The Vite dev server starts on `http://localhost:5173` by default. The frontend also runs a small Node.js relay (`ws/app.js`) on the same port `22006` to forward messages between the backend and any connected browser clients.
+
+<CardGroup cols={2}>
+  <Card title="Player tracking" icon="crosshairs">
+    Real-time positions, health bars, armor, active weapon, and view cones for every player on the map
+  </Card>
+  <Card title="Bomb and utility" icon="bomb">
+    Bomb carrier badge, planted-bomb timer with defuse countdown, grenade trajectories, smoke clouds, and molotov zones
+  </Card>
+  <Card title="HUD and scoreboard" icon="gauge">
+    Round timer, team scores, kill feed, team economy, alive counts, and per-player ping and money
+  </Card>
+  <Card title="Zoom and fullscreen" icon="expand">
+    Mouse-wheel zoom with drag-to-pan and a fullscreen mode with overlaid player panels
+  </Card>
+</CardGroup>
+
+## Privacy and detection
+
+CS2 WebRadar runs entirely on your local machine. It does not send game data to any remote server. The WebSocket server listens only on your local network unless you explicitly configure port forwarding to share the radar with a remote friend.
+
+The backend reads process memory using standard Windows APIs. It is designed to be undetected by VAC, but use it at your own risk and in accordance with the game's terms of service.
+
+## Next steps
+
+Follow the [quickstart](/quickstart) to install dependencies and get the radar running in a few minutes, then see [configuration](/configuration) to understand the `config.json` options.

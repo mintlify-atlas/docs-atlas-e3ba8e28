@@ -1,0 +1,86 @@
+---
+title: "Radar display settings: toggles, sliders, and defaults"
+description: "Toggle overlays, player card details, map entities, and scale everything with sliders. All preferences persist in localStorage between sessions."
+---
+
+Click the **Settings** button in the top-right toolbar to open the settings panel. On desktop the panel drops down below the button; on mobile it slides up from the bottom of the screen as a sheet.
+
+All settings are saved to `localStorage` under the key `radarSettings` as a JSON object and are restored automatically on the next page load. Any key that is missing falls back to the default value defined in `DEFAULT_SETTINGS`.
+
+The settings are organized into four sections described below.
+
+<AccordionGroup>
+  <Accordion title="Display">
+    Controls what information is shown on player dots and player cards.
+
+    | Setting | Key | Default | Description |
+    |---------|-----|---------|-------------|
+    | Ally Names | `showAllNames` | `false` | Show name labels on the radar for players on your team |
+    | Enemy Names | `showEnemyNames` | `true` | Show name labels on the radar for enemy players |
+    | View Cones | `showViewCones` | `false` | Render a FOV cone emanating from each player dot in their facing direction |
+    | Health Bars | `showHealthBars` | `true` | Show the HP progress bar along the bottom edge of each player card |
+    | Ammo Counter | `showAmmo` | `true` | Show the ammo pip bar on player cards |
+    | Armor | `showArmor` | `true` | Show the armor value (and helmet/kevlar icon) on player cards |
+    | Ping | `showPing` | `true` | Show latency in milliseconds on player cards |
+    | Money | `showMoney` | `true` | Show the `$` economy value on player cards |
+    | Flash Effect | `showFlashEffect` | `true` | Show a white overlay on a player card when that player is blinded |
+  </Accordion>
+
+  <Accordion title="Player cards">
+    Controls which panels and the central scoreboard are visible.
+
+    | Setting | Key | Default | Description |
+    |---------|-----|---------|-------------|
+    | Show Scoreboard | `showScoreboard` | `true` | Show the score / round timer / bomb timer bar above the radar |
+    | Show T Cards | `showTCards` | `true` | Show the Terrorist player cards panel |
+    | Show CT Cards | `showCTCards` | `true` | Show the Counter-Terrorist player cards panel |
+
+    <Note>
+    Hiding both team panels while in fullscreen mode leaves more of the radar visible and moves the kill feed to the far right edge of the screen.
+    </Note>
+  </Accordion>
+
+  <Accordion title="Map">
+    Controls which entity overlays appear on the radar map.
+
+    | Setting | Key | Default | Description |
+    |---------|-----|---------|-------------|
+    | Grenades | `showGrenades` | `true` | Show in-flight grenade projectile dots (flashbang, HE, decoy) |
+    | Smoke Overlay | `showSmoke` | `true` | Show the deployed smoke cloud area overlay |
+    | Fire Overlay | `showFire` | `true` | Show the active molotov / incendiary fire area overlay |
+    | Grenade Labels | `showGrenadeLabels` | `true` | Show type labels (`SMK`, `HE`, `FLB`, `DCY`, `MOL`, `INC`, `FIRE`) beneath grenade dots |
+    | Bomb Timer | `showBombTimer` | `true` | Show the bomb countdown when the C4 is planted |
+    | Kill Feed | `showKillFeed` | `true` | Show recent kill events in the corner |
+
+    <Tip>
+    Turning off **Smoke Overlay** and **Fire Overlay** while keeping **Grenades** on still shows the projectile dot for those grenade types — useful when you want to track the thrown grenade without the full area-effect rendering.
+    </Tip>
+  </Accordion>
+
+  <Accordion title="Sizes">
+    Three sliders let you scale the visual size of key elements independently.
+
+    **Player Size** (`dotSize`)
+    - Range: `0.5×` to `2.5×`, step `0.1`
+    - Default: `1.0×`
+    - Scales the diameter of every player dot on the radar. The base size is `1.15 vw`; the slider multiplies that value.
+
+    **Bomb Size** (`bombSize`)
+    - Range: `0.1×` to `2.0×`, step `0.1`
+    - Default: `0.5×`
+    - Scales the diameter of the bomb icon on the radar. The base size is `1.5 vw`.
+
+    **View Cone Length** (`coneLength`)
+    - Range: `0.5×` to `3.0×`, step `0.1`
+    - Default: `1.0×`
+    - Scales the length of the FOV cone drawn in front of each player dot. Only visible when **View Cones** is enabled.
+  </Accordion>
+</AccordionGroup>
+
+## Resetting to defaults
+
+There is no reset button in the UI. To restore all settings to their defaults, run the following in the browser console and reload the page:
+
+```js
+localStorage.removeItem("radarSettings");
+```

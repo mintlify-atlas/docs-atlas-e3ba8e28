@@ -1,0 +1,70 @@
+---
+title: "CS2 WebRadar local network: same PC and LAN guide"
+description: "Open the CS2 WebRadar in a browser on the same machine or any device on your local network — no internet or port forwarding required."
+---
+
+CS2 WebRadar is designed to run entirely on your local machine or LAN. The C++ backend broadcasts game data over a WebSocket on port `22006`, and any browser that can reach that port can display the radar in real time.
+
+## Same PC (localhost)
+
+The simplest setup: run the backend and open the web UI on the same computer.
+
+<Steps>
+  <Step title="Start the backend">
+    Run `cs2_webradar.exe` while Counter-Strike 2 is open. If Windows Firewall prompts you, click **Allow Access**.
+  </Step>
+  <Step title="Start the web interface">
+    In the `webapp/` directory, run the Vite dev server:
+
+    ```bash
+    npm run dev
+    ```
+  </Step>
+  <Step title="Open the radar">
+    Navigate to `http://localhost:5173` in your browser. The app connects automatically using the localhost WebSocket URL:
+
+    ```
+    ws://localhost:22006/cs2_webradar
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  The `USE_LOCALHOST` constant in `webapp/src/app.jsx` (line 14) controls this behavior. When set to `1`, the app always connects to `localhost` regardless of the `PUBLIC_IP` value. It defaults to `0` so that the public IP sharing feature works — set it to `1` if you only ever use the radar on a single machine.
+</Note>
+
+## LAN (second device on the same network)
+
+Use the radar on a tablet, a second PC, or any device connected to the same WiFi or Ethernet network as your gaming PC — ideal for a tablet propped next to your monitor.
+
+<Steps>
+  <Step title="Find your PC's LAN IP address">
+    On Windows, open a terminal and run:
+
+    ```bash
+    ipconfig
+    ```
+
+    Look for the **IPv4 Address** under your active adapter — it will look like `192.168.x.x` or `10.0.x.x`.
+  </Step>
+  <Step title="Start the backend and web interface">
+    Start `cs2_webradar.exe` and the Vite dev server as described above. The backend listens on all network interfaces by default.
+  </Step>
+  <Step title="Open the radar on the second device">
+    On the second device, open a browser and navigate to:
+
+    ```
+    http://<your-pc-lan-ip>:5173
+    ```
+
+    The app detects it is not running on localhost and constructs the WebSocket URL using the page's hostname:
+
+    ```
+    ws://<your-pc-lan-ip>:22006/cs2_webradar
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  The WebSocket server listens on **port 22006**. Make sure Windows Firewall allows inbound TCP connections on that port if the second device cannot connect.
+</Note>

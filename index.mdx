@@ -1,97 +1,57 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "CS2 WebRadar: live browser-based radar for Counter-Strike 2"
+description: "CS2 WebRadar streams live game data from Counter-Strike 2 to your browser via WebSockets, letting you track players, bombs, and grenades in real time."
 ---
 
-## Setting up
+CS2 WebRadar is an open-source, browser-based radar for Counter-Strike 2. A lightweight C++ backend reads live game data directly from the CS2 process and broadcasts it over a local WebSocket server. The React web interface connects to that server and renders a live, interactive map — showing player positions, health, weapons, bomb status, grenade trajectories, and much more.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Install and run the radar in under five minutes
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Configuration" icon="sliders" href="/configuration">
+    Customize the backend config.json settings
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Radar Map" icon="map" href="/features/radar-map">
+    Zoom, pan, fullscreen, and all map overlay features
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Sharing the Radar" icon="share-nodes" href="/usage/sharing">
+    Let a remote friend watch your game live
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## How it works
 
-Everything you need to create world-class documentation.
+CS2 WebRadar has two components that work together to deliver live game data to your browser.
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+<Steps>
+  <Step title="Start Counter-Strike 2">
+    Launch CS2 and load into a match or practice session. The C++ backend requires a running CS2 process to read game memory.
+  </Step>
+  <Step title="Run the backend">
+    Execute `cs2_webradar.exe`. It reads player positions, weapon states, bomb data, and grenade locations from CS2's memory and streams updates over WebSocket on port `22006`.
+  </Step>
+  <Step title="Launch the web interface">
+    Run `start.bat` (or `npm run dev` inside `webapp/`) to start the Vite dev server. Open your browser to `http://localhost:5173` to see the live radar.
+  </Step>
+  <Step title="Share (optional)">
+    Click **Share Radar** in the top bar to copy a link containing your public IP. Send it to a friend — they can watch your game in their browser without installing anything.
+  </Step>
+</Steps>
 
-## Need inspiration?
+## Key features
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<CardGroup cols={2}>
+  <Card title="Live player tracking" icon="crosshairs">
+    Real-time positions, health bars, armor, active weapons, and view cones for every player on the map
+  </Card>
+  <Card title="Bomb and utility tracking" icon="bomb">
+    Bomb carrier badge, planted timer with defuse countdown, grenade trajectories, smoke clouds, and molotov zones
+  </Card>
+  <Card title="HUD and scoreboard" icon="gauge">
+    Round timer, team scores, kill feed, team economy, alive counts, and per-player ping and money
+  </Card>
+  <Card title="Zoom and fullscreen" icon="expand">
+    Mouse-wheel zoom with drag-to-pan, and a dedicated fullscreen mode with overlaid player panels
+  </Card>
+</CardGroup>

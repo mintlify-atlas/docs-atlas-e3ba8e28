@@ -1,0 +1,286 @@
+---
+title: "CS2 WebRadar WebSocket protocol: frames and JSON schema"
+description: "How the C++ backend encodes game data as binary WebSocket frames, the JSON top-level structure, and every field in the player, bomb, grenade, and round objects."
+---
+
+The C++ backend sends live game state to connected browsers as binary WebSocket Blob messages. Each frame is a complete snapshot of the current game state — there is no delta encoding or partial update scheme. The browser's `onmessage` handler converts the Blob to text asynchronously, then parses it as JSON.
+
+## Connection
+
+Connect to the relay with a standard browser `WebSocket`:
+
+```js
+const ws = new WebSocket("ws://<host>:22006/cs2_webradar");
+```
+
+Replace `<host>` with `localhost` for a local connection or with the public IP of the machine running the relay for remote access.
+
+## Receiving messages
+
+The C++ backend sends binary Blob messages. The React frontend reads them with the async `Blob.text()` method before parsing:
+
+```js
+ws.onmessage = async (event) => {
+  const parsedData = JSON.parse(await event.data.text());
+
+  setPlayerArray(parsedData.m_players);
+  setLocalTeam(parsedData.m_local_team);
+  setBombData(parsedData.m_bomb);
+  setGrenadeArray(parsedData.m_grenades ?? []);
+  setRoundInfo(parsedData.m_round_info ?? null);
+  // m_map is handled separately — triggers a data.json fetch
+};
+```
+
+## Top-level message fields
+
+Every frame contains the following top-level fields:
+
+<ResponseField name="m_players" type="Player[]" required>
+  Array of player objects, one per active player controller. See [Player object](#player-object) for the full schema.
+</ResponseField>
+
+<ResponseField name="m_bomb" type="Bomb | null" required>
+  Bomb state object when a C4 entity exists in the world, or `null` when no bomb entity is present. See [Bomb object](#bomb-object).
+</ResponseField>
+
+<ResponseField name="m_grenades" type="Grenade[]" required>
+  Array of active grenade projectile and inferno objects. Defaults to `[]` when no grenades are active. See [Grenade object](#grenade-object).
+</ResponseField>
+
+<ResponseField name="m_round_info" type="RoundInfo | null" required>
+  Game rules snapshot including round timer, phase flags, and scores, or `null` outside of a live game. See [Round info object](#round-info-object).
+</ResponseField>
+
+<ResponseField name="m_map" type="string" required>
+  Active map name string (e.g. `"de_dust2"`, `"de_mirage"`). The value `"invalid"` means no map is currently loaded or CS2 is in the main menu.
+</ResponseField>
+
+<ResponseField name="m_local_team" type="integer" required>
+  Team integer of the local player. `2` = Terrorist, `3` = Counter-Terrorist.
+</ResponseField>
+
+## Player object
+
+Each entry in `m_players` describes one player's controller and pawn state.
+
+<ResponseField name="m_idx" type="integer" required>
+  Unique player index used as the React list key. Stable for the lifetime of the player's slot in the current match.
+</ResponseField>
+
+<ResponseField name="m_name" type="string" required>
+  Player display name as reported by the game.
+</ResponseField>
+
+<ResponseField name="m_team" type="integer" required>
+  Team assignment. `2` = Terrorist, `3` = Counter-Terrorist.
+</ResponseField>
+
+<ResponseField name="m_health" type="integer" required>
+  Current health value, `0`–`100`. `0` indicates the player is dead.
+</ResponseField>
+
+<ResponseField name="m_armor" type="integer" required>
+  Current armor value, `0`–`100`.
+</ResponseField>
+
+<ResponseField name="m_has_helmet" type="boolean" required>
+  `true` when the player has a helmet equipped.
+</ResponseField>
+
+<ResponseField name="m_is_dead" type="boolean" required>
+  `true` when the player is dead. The radar freezes the dot at the last known position when this is `true`.
+</ResponseField>
+
+<ResponseField name="m_has_bomb" type="boolean" required>
+  `true` when this Terrorist player is carrying the C4. Always `false` for Counter-Terrorists.
+</ResponseField>
+
+<ResponseField name="m_has_defuser" type="boolean" required>
+  `true` when this Counter-Terrorist player has a defuse kit. Always `false` for Terrorists.
+</ResponseField>
+
+<ResponseField name="m_money" type="integer" required>
+  Current money amount in dollars.
+</ResponseField>
+
+<ResponseField name="m_kills" type="integer" required>
+  Total kills this match.
+</ResponseField>
+
+<ResponseField name="m_deaths" type="integer" required>
+  Total deaths this match.
+</ResponseField>
+
+<ResponseField name="m_assists" type="integer" required>
+  Total assists this match.
+</ResponseField>
+
+<ResponseField name="m_iPing" type="integer" required>
+  Network latency in milliseconds. Values of `999` or higher are treated as invalid and hidden from the UI.
+</ResponseField>
+
+<ResponseField name="m_flash_alpha" type="float" required>
+  Current flash blindness intensity, `0.0` (not flashed) to `1.0` (fully blinded). Used to render the white overlay on the player card.
+</ResponseField>
+
+<ResponseField name="m_color" type="integer" required>
+  Player color index (`0`–`5`) mapping to the `playerColors` array. Used by the radar dot to distinguish teammates. See [Player colors](/architecture/map-data#player-colors).
+</ResponseField>
+
+<ResponseField name="m_eye_angle" type="float" required>
+  Horizontal view angle in degrees. Used by the radar to rotate the player dot and view cone.
+</ResponseField>
+
+<ResponseField name="m_position" type="object" required>
+  World-space position object with `x`, `y`, and `z` float fields. Converted to normalized radar coordinates by `getRadarPosition`. See [Coordinate projection](/architecture/map-data#coordinate-projection).
+</ResponseField>
+
+<ResponseField name="m_avatar_url" type="string | null">
+  Optional Steam avatar URL. When present, displayed as the player portrait in cards and as the dot image on the radar.
+</ResponseField>
+
+<ResponseField name="m_model_name" type="string | null">
+  Optional character model name used as a fallback portrait when no avatar URL is available (e.g. `"ctm_sas"`).
+</ResponseField>
+
+<ResponseField name="m_weapons" type="object" required>
+  Weapon loadout object. See the expandable schema below.
+
+  <Expandable title="m_weapons fields">
+    <ResponseField name="m_primary" type="string | null">
+      Primary weapon icon name (e.g. `"ak47"`, `"m4a1"`). Matches a filename in `assets/icons/`.
+    </ResponseField>
+    <ResponseField name="m_secondary" type="string | null">
+      Sidearm icon name (e.g. `"deagle"`, `"p250"`).
+    </ResponseField>
+    <ResponseField name="m_active" type="string | null">
+      Icon name of the currently held weapon. The UI highlights whichever weapon slot matches this value.
+    </ResponseField>
+    <ResponseField name="m_utilities" type="string[]">
+      Array of utility icon names the player is carrying (e.g. `["flashbang", "smokegrenade", "hegrenade"]`).
+    </ResponseField>
+    <ResponseField name="m_ammo_clip" type="integer">
+      Rounds remaining in the active weapon's magazine.
+    </ResponseField>
+    <ResponseField name="m_ammo_max_clip" type="integer">
+      Full magazine capacity of the active weapon. Used to render the ammo bar ratio.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Bomb object
+
+The `m_bomb` object is present whenever the C4 entity exists in the world — whether carried, dropped, or planted.
+
+<ResponseField name="m_blow_time" type="float" required>
+  Seconds remaining until the bomb detonates. The scoreboard uses a 40-second baseline to render the progress bar (`pct = blow_time / 40`).
+</ResponseField>
+
+<ResponseField name="m_defuse_time" type="float" required>
+  Seconds remaining on the active defuse attempt. Only meaningful when `m_is_defusing` is `true`.
+</ResponseField>
+
+<ResponseField name="m_is_defusing" type="boolean" required>
+  `true` while a CT player is actively defusing.
+</ResponseField>
+
+<ResponseField name="m_is_defused" type="boolean" required>
+  `true` after the bomb has been successfully defused. The radar dot turns green and the scoreboard displays `"SAFE"`.
+</ResponseField>
+
+<ResponseField name="m_has_kit" type="boolean" required>
+  `true` when the defusing player has a defuse kit. Affects the expected defuse duration: `5` seconds with a kit, `10` seconds without. The scoreboard uses this to compute the defuse progress bar: `defPct = defuse_time / (m_has_kit ? 5 : 10)`.
+</ResponseField>
+
+The bomb also exposes world-space position fields (`x`, `y`, `z`) used by the `Bomb` component to place the C4 icon on the radar via `getRadarPosition`.
+
+## Grenade object
+
+Each entry in `m_grenades` represents one active projectile or fire entity.
+
+<ResponseField name="type" type="string" required>
+  Grenade type identifier. One of `"smoke"`, `"flashbang"`, `"he"`, `"molotov"`, `"incendiary"`, `"decoy"`, or `"inferno"`.
+</ResponseField>
+
+<ResponseField name="x" type="float" required>
+  World-space X coordinate of the grenade.
+</ResponseField>
+
+<ResponseField name="y" type="float" required>
+  World-space Y coordinate of the grenade.
+</ResponseField>
+
+<ResponseField name="m_did_smoke_effect" type="boolean">
+  `true` when a smoke grenade has deployed its cloud. Triggers the animated smoke area rendering instead of the projectile dot.
+</ResponseField>
+
+<ResponseField name="m_is_active" type="boolean">
+  `true` when a decoy is producing sound. Triggers the pulsing ring animation.
+</ResponseField>
+
+## Round info object
+
+<ResponseField name="m_time_remaining" type="float" required>
+  Seconds left in the current phase (round, freeze time, or warmup).
+</ResponseField>
+
+<ResponseField name="m_is_warmup" type="boolean" required>
+  `true` during the pre-match warmup phase.
+</ResponseField>
+
+<ResponseField name="m_is_freeze_period" type="boolean" required>
+  `true` during the buy phase at the start of a round.
+</ResponseField>
+
+<ResponseField name="m_bomb_planted" type="boolean" required>
+  `true` from the moment the bomb is planted until the round ends. Switches the scoreboard centre to the bomb countdown display.
+</ResponseField>
+
+<ResponseField name="m_round_number" type="integer" required>
+  Current round number, `1`-indexed.
+</ResponseField>
+
+<ResponseField name="m_t_score" type="object" required>
+  Terrorist team score object.
+
+  <Expandable title="m_t_score fields">
+    <ResponseField name="m_score" type="integer">
+      Number of rounds won by the T side.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="m_ct_score" type="object" required>
+  Counter-Terrorist team score object.
+
+  <Expandable title="m_ct_score fields">
+    <ResponseField name="m_score" type="integer">
+      Number of rounds won by the CT side.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Reconnection behavior
+
+The frontend uses exponential backoff with jitter when the WebSocket connection drops. It does not give up — it keeps retrying until the tab is closed or the connection succeeds.
+
+```js
+const delay = Math.min(500 * Math.pow(2, attempt), 16000)
+            + Math.random() * 200; // ±200ms jitter
+```
+
+| Attempt | Base delay | Max jitter |
+|---------|-----------|------------|
+| 1 | 500 ms | +200 ms |
+| 2 | 1 s | +200 ms |
+| 3 | 2 s | +200 ms |
+| 4 | 4 s | +200 ms |
+| 5 | 8 s | +200 ms |
+| 6+ | 16 s (cap) | +200 ms |
+
+A 5-second connection timeout closes any socket that has not reached `OPEN` state within that window, triggering the reconnect schedule immediately.
+
+<Note>
+The status message displayed on the connecting screen (e.g. "Reconnecting in 2.0s… (attempt 3)") is updated on every reconnect attempt so you can see the backoff progress in real time.
+</Note>

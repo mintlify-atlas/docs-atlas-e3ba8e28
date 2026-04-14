@@ -1,0 +1,79 @@
+{
+  "projectType": "frontend",
+  "projectName": "CS2 WebRadar",
+  "projectDescription": "A browser-based real-time radar for Counter-Strike 2 that reads game data via a C++ memory reader and broadcasts it over WebSockets, with support for local and remote sharing.",
+  "theme": "aspen",
+  "primaryColor": "#f5a623",
+  "lightColor": "#ffd080",
+  "darkColor": "#c47800",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "configuration"
+            ]
+          },
+          {
+            "group": "Usage",
+            "pages": [
+              "usage/local",
+              "usage/sharing",
+              "usage/mobile"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/radar-map",
+              "features/player-cards",
+              "features/hud-elements",
+              "features/settings"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "architecture/overview",
+              "architecture/websocket-protocol",
+              "architecture/map-data"
+            ]
+          },
+          {
+            "group": "Contributing",
+            "pages": [
+              "contributing/roadmap",
+              "contributing/adding-features"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Real-time player positions, health, armor, and weapons on an interactive radar map",
+    "Bomb tracking with planted timer, defuse countdown, and carrier indicator",
+    "Grenade trajectories including smoke clouds and molotov/incendiary fire zones",
+    "Kill feed and per-round scoreboard with team scores and round timer",
+    "Remote radar sharing via public IP with one-click copy link",
+    "Zoom and pan on the radar map with mouse wheel and drag support",
+    "Fullscreen mode with overlaid player panels",
+    "Fully configurable display via in-app settings (toggles and sliders)",
+    "Responsive layout supporting desktop, tablet, and mobile browsers",
+    "Exponential-backoff WebSocket reconnection with live status messages"
+  ],
+  "publicApiSurface": [
+    "WebSocket endpoint: ws://<host>:22006/cs2_webradar",
+    "JSON message schema: m_players, m_bomb, m_grenades, m_round_info, m_map, m_local_team",
+    "config.json: m_use_localhost, m_local_ip, m_public_ip, m_port",
+    "getRadarPosition(mapData, entityCoords) — coordinate projection utility",
+    "DEFAULT_SETTINGS — radar display settings object with all toggle/slider keys",
+    "playerColors[] — six player accent colors",
+    "teamEnum — { none, spectator, terrorist, counterTerrorist }"
+  ]
+}

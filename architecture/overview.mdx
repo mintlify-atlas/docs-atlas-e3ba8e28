@@ -1,0 +1,104 @@
+---
+title: "CS2 WebRadar architecture: backend, relay, and frontend"
+description: "How the C++ backend, Node.js WebSocket relay on port 22006, and Vite + React 18 frontend cooperate to deliver live CS2 game data to browsers."
+---
+
+CS2 WebRadar is built from three cooperating components: a C++ backend that reads live game state from the CS2 process, a Node.js WebSocket relay that fans messages out to connected browsers, and a React frontend that renders the live radar. Data flows in one direction — from CS2 memory to every watching browser — with no round-trips required after the initial WebSocket handshake.
+
+## Data flow
+
+```
+CS2 process
+    │  (process memory)
+    ▼
+cs2_webradar.exe   (C++ backend)
+    │  WebSocket message — binary JSON blob
+    ▼
+Node.js relay   ws://host:22006/cs2_webradar
+    │  broadcast to all connected clients
+    ▼
+Browser(s)   React frontend
+```
+
+Each time the C++ backend produces a frame it sends a single binary WebSocket message to the relay. The relay immediately forwards that message to every connected browser client. Browsers parse the JSON payload and update React state, triggering a re-render of the radar, player cards, scoreboard, and all overlays.
+
+## Components
+
+<CardGroup cols={2}>
+  <Card title="C++ backend" icon="cpu">
+    Reads CS2 process memory using the game SDK and offset tables, serializes player, bomb, grenade, and round data as JSON, and sends binary WebSocket frames to the relay server.
+  </Card>
+  <Card title="Node.js relay" icon="server">
+    Lightweight WebSocket server (`webapp/ws/app.js`) on port `22006` at path `/cs2_webradar`. Receives frames from the C++ client and broadcasts to all connected browser clients.
+  </Card>
+  <Card title="React frontend" icon="browser">
+    Vite + React 18 single-page app (`webapp/src/`). Connects to the relay via WebSocket, parses JSON frames, and renders the live radar using React state and absolute-positioned DOM elements.
+  </Card>
+  <Card title="Map data" icon="map">
+    Static per-map assets (`data/<mapName>/`) loaded on demand: `data.json` with the map origin and scale, `radar.png` as the overlay image, and `background.png` for the page backdrop.
+  </Card>
+</CardGroup>
+
+### C++ backend
+
+The executable (`cs2_webradar.exe`) runs alongside CS2 and uses the game's own SDK and memory offsets to read live entity state. On each tick it serializes the following into a single JSON object and sends it as a binary WebSocket message to the relay:
+
+- `m_players` — array of all player controller + pawn data
+- `m_bomb` — C4 position and timer state
+- `m_grenades` — all active grenade projectiles and inferno entities
+- `m_round_info` — game rules (round number, phase, timer, scores)
+- `m_map` — the active map name string (e.g. `"de_dust2"`)
+- `m_local_team` — the team integer of the local player (`2`=T, `3`=CT)
+
+### Node.js relay
+
+The relay (`webapp/ws/app.js`) is intentionally minimal. It does no parsing, filtering, or transformation — it simply re-sends every inbound message to every currently connected client:
+
+```js
+web_socket_server.on("connection", (web_socket, request) => {
+  web_socket.on("message", (message) => {
+    web_socket_server.clients.forEach((client) => {
+      client.send(message);
+    });
+  });
+});
+
+server.listen(port);
+```
+
+This fan-out relay pattern means any number of browsers can watch the same game simultaneously. The C++ backend only ever manages one outbound connection.
+
+### React frontend
+
+The frontend (`webapp/src/`) is a Vite + React 18 SPA styled with TailwindCSS. The root component (`app.jsx`) owns all WebSocket state and distributes data down to:
+
+| Component | Responsibility |
+|---|---|
+| `Radar` | Renders the map image and all entity overlays; handles zoom, pan, and fullscreen |
+| `Player` | Positions a player dot on the radar; rotates with `m_eye_angle`; shows view cone |
+| `Bomb` | Positions the C4 icon using world coordinates |
+| `Grenade` | Renders grenade dots, smoke clouds, and fire effects |
+| `PlayerCard` | Sidebar card with health, weapons, money, KDA, and armor |
+| `Scoreboard` | Round timer, team scores, and bomb countdown bar |
+| `KillFeed` | Scrolling log of kills derived from player state changes |
+
+## Tech stack
+
+<CardGroup cols={2}>
+  <Card title="Vite 4 + React 18" icon="bolt">
+    Fast HMR during development; production builds are static files served by any HTTP server.
+  </Card>
+  <Card title="TailwindCSS 3" icon="palette">
+    Utility-class styling with a custom CSS variable theme for team colors and UI chrome.
+  </Card>
+  <Card title="ws 8" icon="plug">
+    Node.js `ws` library powers the relay server. The browser uses the native `WebSocket` API.
+  </Card>
+  <Card title="concurrently" icon="terminal">
+    The `npm run dev` script uses `concurrently` to start the relay server and the Vite dev server in a single terminal.
+  </Card>
+</CardGroup>
+
+<Note>
+The relay and the Vite dev server share the same machine but use different ports: the relay listens on `22006` for WebSocket traffic, and Vite serves the frontend on `5173` by default.
+</Note>

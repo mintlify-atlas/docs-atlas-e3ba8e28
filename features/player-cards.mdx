@@ -1,0 +1,94 @@
+---
+title: "Player cards: live health, weapons, and economy panels"
+description: "Side panels display a live card for every player showing HP, money, KDA, armor, ping, active weapons, grenades, and ammo — all updating in real time."
+---
+
+The two side panels each display a vertical list of player cards — Terrorists on the left, Counter-Terrorists on the right. Every card updates in real time from the WebSocket data stream and gives you a full picture of each player's combat state at a glance.
+
+## Card anatomy
+
+Each card is made up of a **portrait** on the outside edge and an **info panel** filling the rest of the card. Dead cards are rendered at `0.4` opacity and converted to greyscale to make them visually distinct from live players.
+
+### Portrait
+
+The portrait area shows one of three images, in priority order:
+
+1. **Steam avatar** — fetched and cached server-side, shown when available
+2. **Character model** — the CS2 character model thumbnail if no avatar is available
+3. **Placeholder** — a faint team-colored `?` glyph as a last resort
+
+The portrait is tinted and darkened when the player is dead.
+
+### Info panel rows
+
+<Steps>
+  <Step title="Row 1 — Name and HP badge">
+    The player's name is displayed in full, truncated with an ellipsis if too long. The HP badge to the right shows the current health value color-coded by threshold, or a `✕` symbol when dead.
+
+    | HP range | Badge color |
+    |----------|-------------|
+    | > 60 | Green (`#3dd68c`) |
+    | 31 – 60 | Yellow (`#f0b429`) |
+    | ≤ 30 | Red (`#e05252`) |
+    | Dead | Dimmed (✕) |
+  </Step>
+
+  <Step title="Row 2 — Money, KDA, armor, and ping">
+    - **Money** — formatted as `$X,XXX` (e.g. `$4,750`). Hidden when the **Money** setting is off.
+    - **KDA** — kills in green, deaths in red, assists in blue, separated by `/`.
+    - **Armor** — shown when `armor > 0` and the **Armor** setting is on. Displays a kevlar or kevlar+helmet icon followed by the armor value.
+    - **Ping** — latency in milliseconds. Hidden when **Ping** is off, or when the value is `0` or `≥ 999`.
+
+    | Ping range | Color |
+    |------------|-------|
+    | < 40 ms | Green |
+    | 40 – 59 ms | Yellow |
+    | ≥ 60 ms | Red |
+  </Step>
+
+  <Step title="Row 3 — Weapons and special badges">
+    The active weapon slot is highlighted with an amber border and background tint. Inactive slots use a subtle white tint.
+
+    - **Primary weapon** icon (rifle, SMG, sniper, heavy)
+    - **Secondary weapon** icon (pistol)
+    - **C4 carrier badge** — a pulsing red `C4` badge shown for the T player holding the bomb
+    - **Defuser icon** — shown for CT players carrying a defuse kit
+  </Step>
+
+  <Step title="Row 4 — Grenades and ammo bar">
+    Grenade icons appear for each utility item the player is carrying. The active grenade slot is highlighted the same way as weapons.
+
+    The **ammo bar** shows pip-style indicators for the remaining clip of the active weapon. Pips are colored by remaining percentage:
+
+    | Ammo remaining | Color |
+    |----------------|-------|
+    | > 50 % | Green |
+    | 26 – 50 % | Yellow |
+    | ≤ 25 % | Red |
+
+    Every fifth pip is taller for easier counting. The raw clip count is printed in small monospace text after the pips. Hidden when the **Ammo Counter** setting is off.
+  </Step>
+</Steps>
+
+### HP bar
+
+A 2 px bar runs along the bottom edge of each card, shrinking from full width as health decreases. It uses the same green / yellow / red color thresholds as the HP badge. Hidden when the **Health Bars** setting is off.
+
+### Flash overlay
+
+When a player is blinded (flash alpha > 0), a white overlay appears across the info panel at a proportional opacity. Hidden when the **Flash Effect** setting is off.
+
+## Layout differences
+
+<CardGroup cols={2}>
+  <Card title="Desktop" icon="desktop">
+    T cards are in a fixed-width `300 px` column on the left; CT cards mirror them on the right. The radar map fills the center. Cards are not scrollable unless the list overflows.
+  </Card>
+  <Card title="Fullscreen" icon="expand">
+    Both panels overlay the map edges with a gradient fade. The panels scroll independently when there are more players than fit in the viewport height.
+  </Card>
+</CardGroup>
+
+<Note>
+On mobile, the side panels collapse. You can tap the **Terrorists** or **CT** button above the radar to view one team's cards at a time.
+</Note>

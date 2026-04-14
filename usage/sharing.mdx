@@ -1,0 +1,68 @@
+---
+title: "Share CS2 WebRadar with a remote viewer over the internet"
+description: "Let a friend watch your live game radar from anywhere in the world by forwarding two ports and sending them a single browser link."
+---
+
+CS2 WebRadar includes a built-in share feature. Once you forward the right ports on your router, click **Share Radar** in the top bar and your friend can open the radar in any browser — no software installation needed on their end.
+
+## Prerequisites
+
+Your friend connects directly to your machine over the internet, so you need to:
+
+- Know your **public IP address** (the app fetches it automatically from `api.ipify.org`)
+- Have access to your **router's port forwarding settings**
+
+## Set up port forwarding
+
+You need to forward two TCP ports from your router to your gaming PC's LAN IP.
+
+<Steps>
+  <Step title="Find your PC's LAN IP">
+    Open a terminal and run `ipconfig`. Note the **IPv4 Address** for your active network adapter (e.g., `192.168.1.42`).
+  </Step>
+  <Step title="Forward port 22006 (WebSocket backend)">
+    In your router's admin panel, create a port forwarding rule:
+
+    | Field | Value |
+    |---|---|
+    | Protocol | TCP |
+    | External port | 22006 |
+    | Internal IP | your PC's LAN IP |
+    | Internal port | 22006 |
+
+    This allows your friend's browser to reach the CS2 WebRadar WebSocket server.
+  </Step>
+  <Step title="Forward port 5173 (web interface)">
+    Create a second rule for the Vite dev server:
+
+    | Field | Value |
+    |---|---|
+    | Protocol | TCP |
+    | External port | 5173 |
+    | Internal IP | your PC's LAN IP |
+    | Internal port | 5173 |
+  </Step>
+  <Step title="Start the backend and web interface">
+    Run `cs2_webradar.exe` and start the Vite dev server with `npm run dev` in the `webapp/` directory.
+  </Step>
+  <Step title="Copy the share link">
+    Click **Share Radar** in the top bar of the web UI. The app fetches your public IP from `https://api.ipify.org?format=json` and copies the following to your clipboard:
+
+    ```
+    <your-public-ip>:5173
+    ```
+
+    The button label briefly changes to **Copied!** to confirm.
+  </Step>
+  <Step title="Send the link to your friend">
+    Paste the copied address into a message. Your friend opens it in their browser and the radar connects automatically to `ws://<your-public-ip>:22006/cs2_webradar`.
+  </Step>
+</Steps>
+
+<Warning>
+  The app checks whether the detected public IP starts with `192.168`. If it does, it treats the address as a private/local IP and displays an error: `A public IP address is required! Currently detected IP (...) is a private/local IP`. This means your public IP detection failed. Check your internet connection or set the `PUBLIC_IP` constant in `webapp/src/app.jsx` (line 17) to your actual public IP as a static fallback.
+</Warning>
+
+<Note>
+  Your friend needs no software installed — just a modern browser. The radar runs entirely client-side once the page loads.
+</Note>

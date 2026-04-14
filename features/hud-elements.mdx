@@ -1,0 +1,88 @@
+---
+title: "HUD reference: scoreboard, bomb timer, and kill feed"
+description: "The scoreboard shows T/CT scores and a live round timer, the kill feed surfaces recent frags, and grenade overlays visualize smokes and fires on the map."
+---
+
+Beyond the radar map and player cards, CS2 WebRadar includes a set of heads-up display elements that surface the most important in-round information at a glance. Each element can be toggled individually from the [Settings panel](/features/settings).
+
+## Scoreboard
+
+The scoreboard sits centered above the radar map on desktop and floats above the map in fullscreen mode. It is divided into three sections.
+
+### Score sides
+
+The T score appears on the left in orange; the CT score appears on the right in blue. The local player's side is highlighted with a subtle background tint and a glow effect on the score number.
+
+### Centre clock
+
+The centre section shows the current round timer in `M:SS` format along with the round number (`RND X`).
+
+| Phase | Centre label | Behavior |
+|-------|-------------|----------|
+| Warmup | `WARMUP` | Static countdown |
+| Freeze / buy time | `BUY` in blue | Static countdown |
+| Active round | Round number | Counts down; blinks red when ≤ 15 s remain |
+| Bomb phase (not planted) | `BOMB` in red | Pulses |
+
+When the round timer drops to **15 seconds or fewer** (and the bomb is not planted), the time display blinks between two shades of red at a 500 ms interval.
+
+### Bomb centre
+
+When the bomb is planted and the blow timer is above 0.5 s, the centre section switches to bomb mode:
+
+- The background turns dark red and the border glows red.
+- A large red countdown shows seconds remaining to detonation (e.g. `32.4s`).
+- A **red progress bar** along the bottom edge drains as the timer decreases.
+- When a CT begins defusing, a **blue progress bar** fills along the top edge and a `DEFUSE X.Xs` label pulses in CT blue.
+- When defused, the display shows **SAFE** in green and the bomb icon turns green.
+
+<Note>
+The scoreboard can be hidden via the **Show Scoreboard** toggle in Settings.
+</Note>
+
+## Kill feed
+
+The kill feed appears in the **bottom-right corner** of the radar (or the bottom-right of the screen in fullscreen mode, inset from the CT panel edge). Each entry shows:
+
+- **Killer name** — colored orange for T, blue for CT
+- **Weapon icon** — the active weapon at the time of the kill
+- **Victim name** — colored by team, struck through, at reduced opacity
+
+Up to **5 entries** are shown at once. Each entry automatically fades out after **6 seconds**. New entries slide in from the right with a brief animation.
+
+<Note>
+The kill feed can be hidden via the **Kill Feed** toggle in Settings.
+</Note>
+
+## Grenade and fire overlays
+
+Grenades in flight and deployed area effects are rendered as entity overlays on the map itself. Each grenade type has a distinct visual treatment:
+
+<CardGroup cols={2}>
+  <Card title="Projectile dot" icon="circle">
+    In-flight flashbangs (`FLB`), HE grenades (`HE`), decoys (`DCY`), and undetonated molotovs (`MOL`) appear as colored dots with an optional type label below. The dot color matches the grenade type.
+  </Card>
+  <Card title="Smoke cloud" icon="cloud">
+    When a smoke grenade deploys (`m_did_smoke_effect` is `true`), the dot is replaced by a large animated smoke cloud rendered at the correct game radius. The cloud shows a `SMK` label at its center. Controlled by the **Smoke Overlay** setting.
+  </Card>
+  <Card title="Fire area" icon="fire">
+    Active infernos (molotov / incendiary fires) show as an animated flame area with layered fire tongues, embers, and a pulsing outer ring. A `FIRE` label appears at the center. Controlled by the **Fire Overlay** setting.
+  </Card>
+  <Card title="Decoy ping" icon="signal">
+    Active decoy grenades emit an expanding ring animation in addition to their dot, mimicking the in-game radar ping effect.
+  </Card>
+</CardGroup>
+
+All grenade overlays are toggled as a group by the **Grenades** setting. Type labels (`SMK`, `HE`, `FLB`, `DCY`, `MOL`, `INC`, `FIRE`) can be toggled separately with **Grenade Labels**.
+
+## Team statistics HUD
+
+The `TeamStatsHUD` and `RoundTimerHUD` components are available in `Hudcomponents.jsx` for contributors to use. `TeamStatsHUD` renders per-team data in a fixed top-center panel:
+
+- **Alive count** — number of players still alive, displayed as `X/5`
+- **Team economy** — total cash across all living players on the team, formatted as `$X,XXX`
+- **Utility count** — total grenades held by the team
+
+It takes a single `data` prop containing `m_alive_count`, `m_team_economy`, `m_utility_count`, and `m_local_team` — these fields must be supplied by the C++ backend and are not yet wired into the main `app.jsx` render tree by default.
+
+`RoundTimerHUD` renders a standalone round timer widget using `data.m_round_info.m_current_time`. It is also not mounted in the default layout but is ready to use.

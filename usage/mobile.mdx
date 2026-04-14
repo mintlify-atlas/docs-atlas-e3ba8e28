@@ -1,0 +1,43 @@
+---
+title: "CS2 WebRadar on mobile and tablet: layout and usage"
+description: "CS2 WebRadar adapts automatically to small screens — open the share link in any mobile browser to get a touch-friendly radar view."
+---
+
+CS2 WebRadar is fully responsive. The layout and settings panel both adapt when your browser window is narrower than 1024 px, which covers phones, tablets, and narrow browser windows on desktop. No app installation is required on the mobile device.
+
+## How the layout changes on mobile
+
+The app detects screen size at load time and on every resize by checking `window.innerWidth < 1024` (`app.jsx`, line 101).
+
+<CardGroup cols={2}>
+  <Card title="Mobile layout" icon="mobile">
+    Team toggle buttons (**T** / **CT**) appear above the radar. Tap a button to show that team's player cards as a stacked list, then tap the radar below it. Tap the same button again to hide the cards.
+  </Card>
+  <Card title="Desktop layout" icon="monitor">
+    Three-column view: Terrorist player cards on the left, the radar in the center, and Counter-Terrorist cards on the right — all visible simultaneously.
+  </Card>
+</CardGroup>
+
+## Settings panel on mobile
+
+On screens narrower than 640 px (`SettingsButton.jsx`, line 66), the settings panel slides up from the bottom of the screen as a sheet with a blurred backdrop overlay. Tap **Done** or tap outside the sheet to close it.
+
+On wider screens, the settings panel opens as a dropdown anchored to the **Settings** button in the top bar.
+
+## Open the radar on a mobile device
+
+<Steps>
+  <Step title="Make sure the radar is accessible">
+    Follow the [local network](/usage/local) or [sharing](/usage/sharing) guide to make the radar reachable from your device. For a tablet on the same WiFi, the LAN approach is simplest — no port forwarding needed.
+  </Step>
+  <Step title="Open the URL in a mobile browser">
+    Navigate to `http://<host-ip>:5173` in Safari, Chrome, or any modern mobile browser. The radar loads and connects automatically.
+  </Step>
+  <Step title="Use the team toggle buttons">
+    Tap **Terrorists** or **CT** above the radar to show that side's player cards. Tap the same button again to collapse them and get more vertical space for the radar.
+  </Step>
+</Steps>
+
+<Tip>
+  A tablet in landscape orientation propped next to your monitor gives you a near-desktop experience — player cards and the radar all fit comfortably at typical tablet widths above 1024 px, switching to the full three-column layout.
+</Tip>

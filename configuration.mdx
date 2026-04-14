@@ -1,0 +1,50 @@
+---
+title: "CS2 WebRadar config.json: backend configuration reference"
+description: "Reference for every field in config.json, the file the C++ backend generates on first run to control the WebSocket address and connection mode."
+---
+
+The CS2 WebRadar backend reads a `config.json` file from its working directory at startup. If the file does not exist, it is created automatically on the first run with sensible defaults. Edit the values to change how the backend exposes its WebSocket server, then restart `cs2_webradar.exe` for the changes to take effect.
+
+## Default config.json
+
+```json config.json
+{
+    "m_use_localhost": true,
+    "m_local_ip": "192.168.x.x",
+    "m_public_ip": "x.x.x.x",
+    "m_port": 22006
+}
+```
+
+Replace `192.168.x.x` with your machine's LAN IP address and `x.x.x.x` with your external (public) IP address before sharing the radar with a remote friend.
+
+## Fields
+
+<ParamField path="m_use_localhost" type="boolean" default="true">
+  Controls which IP address the web interface uses to connect to the WebSocket server.
+
+  - `true` — the interface connects to `localhost`. Use this for local-only setups, such as a second monitor or a tablet on the same network.
+  - `false` — the interface connects to the value of `m_public_ip`. Use this when sharing the radar with someone on a different network.
+
+  This maps to the `USE_LOCALHOST` constant in the frontend source (`app.jsx`). The source uses `0` for false and `1` for true.
+</ParamField>
+
+<ParamField path="m_local_ip" type="string" default="192.168.x.x">
+  Your machine's local area network (LAN) IP address, for example `192.168.1.42`. This value is used for display purposes inside the UI and is not the address the WebSocket server binds to. The server always listens on all interfaces (`0.0.0.0`).
+
+  To find your LAN IP on Windows, open a terminal and run `ipconfig`, then look for the **IPv4 Address** under your active adapter.
+</ParamField>
+
+<ParamField path="m_public_ip" type="string" default="x.x.x.x">
+  Your external (public) IP address, used when `m_use_localhost` is `false`. The web interface embeds this address in the WebSocket URL so that remote clients can connect.
+
+  You need to forward TCP port `22006` on your router to your PC's LAN IP before a remote client can reach the server. See [sharing the radar](/usage/sharing) for the full port-forwarding setup.
+</ParamField>
+
+<ParamField path="m_port" type="number" default="22006">
+  The TCP port the WebSocket server listens on. The default is `22006`. If you change this value, update the matching port constant in `webapp/ws/app.js` and ensure you forward the new port on your router when sharing remotely.
+</ParamField>
+
+<Note>
+  Changes to `config.json` are only read at startup. Restart `cs2_webradar.exe` after editing the file for the new values to take effect.
+</Note>

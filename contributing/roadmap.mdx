@@ -1,0 +1,69 @@
+---
+title: "CS2 WebRadar feature status: live features and roadmap"
+description: "Full list of live features in CS2 WebRadar — player tracking, bomb timers, grenade overlays — plus scoped, planned additions from the TODO tracker."
+---
+
+CS2 WebRadar is actively developed. The checklist below reflects the current state of the project: features already shipping in the frontend and C++ backend, followed by planned additions that are scoped but not yet implemented.
+
+## Implemented features
+
+<Check>
+All features below are currently live. You can toggle most of them on and off from the settings panel.
+</Check>
+
+| Feature | Description |
+|---|---|
+| Player positions | Real-time dot on the radar for every player in the match |
+| Player health & armor | Health bar on each player card; armor icon with value |
+| Player weapons | Primary, secondary, and utility slot icons; active weapon highlighted |
+| Player money | Per-player cash shown on the player card |
+| Player teams & colors | T-side and CT-side color-coding throughout the UI |
+| Active weapon indicator | Highlighted border and background on the currently held weapon slot |
+| Bomb location | C4 carrier badge and planted-bomb icon on the radar |
+| Bomb timer & defuse timer | Countdown bar when C4 is planted; defuse progress overlay |
+| Player view angles | View-cone lines projected from each player dot |
+| Dead / alive status | Grayed-out card and "✕" HP badge for eliminated players |
+| Defuser status | Defuser kit icon on CT player cards |
+| Flashbang blindness indicator | White overlay on a player card when that player is flashed |
+| Grenade trajectories | Live grenade icons tracking across the map in flight |
+| Weapon ammo count | Magazine bar and numeric ammo counter below the active weapon |
+| Kill feed / round stats | K/D/A displayed per player; kill-feed strip below the radar |
+| Smoke grenade positions | Gray smoke circles on the radar for active smoke clouds |
+| Molotov / incendiary fire | Red-orange fire zones drawn on the radar during inferno |
+| Round time & phase | Round clock and phase indicator in the scoreboard |
+| Player ping / latency | Per-player ping in milliseconds on each player card |
+| Team economy | Combined team cash totals in the scoreboard |
+| Alive count | Live X/5 alive counter per team in the scoreboard |
+| Utility usage tracker | Tracks which utilities each team has used or has remaining |
+| Minimap zoom & pan | Mouse-wheel zoom (1×–6×) with drag-to-pan and zoom reset button |
+
+## Planned features
+
+<Info>
+The items below are scoped in the project's TODO list. Some require only frontend work; others need new fields added to the C++ backend first.
+</Info>
+
+<AccordionGroup>
+  <Accordion title="Damage taken visualization">
+    Show damage direction on player avatars — red directional arrows pointing to where incoming damage came from. Requires tracking health delta events from `C_CSPlayerPawn->m_totalHitsOnServer`. Rated **hard** difficulty.
+  </Accordion>
+  <Accordion title="Footstep sound radius">
+    A pulsing circle around moving players representing how far their footsteps can be heard. Radius calculated from velocity and surface type. Rated **medium** difficulty.
+  </Accordion>
+  <Accordion title="Heatmap mode">
+    An overlay that accumulates kill, death, and utility-usage positions over time and renders them as a colored heat map on the minimap. Rated **hard** difficulty.
+  </Accordion>
+  <Accordion title="Scoped status">
+    Show a scope icon over a player dot when a sniper is scoped in. Requires `C_CSPlayerPawn->m_bIsScoped` from the C++ backend.
+  </Accordion>
+  <Accordion title="Crouch status">
+    Crouching players rendered smaller on the radar. Uses `C_BasePlayerPawn->m_flDuckAmount` (0.0 = standing, 1.0 = full crouch).
+  </Accordion>
+  <Accordion title="Reloading status">
+    A reload icon over a player while their weapon is cycling. Detected via `C_BaseFlex->m_flAnimTime`.
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+Want to implement one of these? See [Adding new features](/contributing/adding-features) for a step-by-step guide to extending both the frontend and the C++ backend.
+</Note>

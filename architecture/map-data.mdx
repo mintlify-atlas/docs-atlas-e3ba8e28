@@ -1,0 +1,165 @@
+---
+title: "CS2 map coordinate projection and radar asset format"
+description: "How CS2 world-space coordinates are projected onto the 1024×1024 radar image, and the structure of the per-map data.json origin and scale file."
+---
+
+Every entity position sent by the C++ backend is a CS2 world-space coordinate. Before the frontend can draw a player dot, bomb icon, or grenade marker at the right pixel on the radar image, it must convert that world coordinate to a normalized 0.0–1.0 position relative to the 1024×1024 radar image. That conversion is driven by per-map calibration data loaded from a static `data.json` file.
+
+## Coordinate projection
+
+The `getRadarPosition` utility (`webapp/src/utilities/utilities.jsx`) performs the conversion:
+
+```js
+export const getRadarPosition = (mapData, entityCoords) => {
+  if (!entityCoords.x || !entityCoords.y) {
+    return { x: 0, y: 0 };
+  }
+
+  if (!mapData.x || !mapData.y) {
+    return { x: 0, y: 0 };
+  }
+
+  const position = {
+    x: (entityCoords.x - mapData.x) / mapData.scale / 1024,
+    y: (((entityCoords.y - mapData.y) / mapData.scale) * -1.0) / 1024,
+  };
+
+  return position;
+};
+```
+
+The result is a `{ x, y }` object where both values are in the range `0.0`–`1.0`, representing a fractional position on the radar image.
+
+### How the formula works
+
+<Steps>
+  <Step title="Subtract the map origin">
+    `entityCoords.x - mapData.x` translates the world coordinate so that the top-left corner of the radar image maps to `(0, 0)`. `mapData.x` and `mapData.y` are the world-space coordinates of that top-left corner, taken directly from the Valve-supplied radar overview data.
+  </Step>
+  <Step title="Divide by scale">
+    `/ mapData.scale` converts from game units to radar-image units. `mapData.scale` is the number of game units per pixel in the radar image, also sourced from the Valve overview data.
+  </Step>
+  <Step title="Divide by 1024">
+    `/ 1024` normalizes the pixel position to the `0.0`–`1.0` range. The radar image is always treated as 1024×1024 pixels regardless of how the browser scales it.
+  </Step>
+  <Step title="Flip the Y axis">
+    The `* -1.0` on the Y formula inverts the vertical axis. CS2's world space has Y increasing upward (north), but screen space has Y increasing downward, so the Y component must be negated to place entities at the correct vertical position on the image.
+  </Step>
+</Steps>
+
+The entity overlay divs are then positioned using the rendered pixel dimensions of the image element at runtime:
+
+```js
+const tx = imgRect.width  * radarPos.x - dotBounds.width  * 0.5;
+const ty = imgRect.height * radarPos.y - dotBounds.height * 0.5;
+// applied as: transform: `translate(${tx}px, ${ty}px)`
+```
+
+This means the normalized position automatically scales with the rendered image size — no hard-coded pixel values are needed.
+
+## Per-map asset files
+
+All map assets live under `data/<mapName>/` relative to the web root. The map name comes from the `m_map` field in the WebSocket message.
+
+```
+data/
+└── de_dust2/
+    ├── data.json      # Map origin + scale calibration
+    ├── radar.png      # Overhead radar overlay image
+    └── background.png # Full-page background image
+```
+
+<Warning>
+When `m_map` is `"invalid"`, no map data is loaded and the radar is not rendered. This happens when CS2 is in the main menu or between maps.
+</Warning>
+
+### data.json format
+
+```json
+{
+  "x": -2476.0,
+  "y": 3239.0,
+  "scale": 4.4
+}
+```
+
+<ResponseField name="x" type="float" required>
+  World-space X coordinate of the top-left corner of the radar image. Subtract this from an entity's X coordinate as the first step of the projection.
+</ResponseField>
+
+<ResponseField name="y" type="float" required>
+  World-space Y coordinate of the top-left corner of the radar image. Subtract this from an entity's Y coordinate before negating and normalizing.
+</ResponseField>
+
+<ResponseField name="scale" type="float" required>
+  Number of game units per radar pixel. Divide by this value after subtracting the origin to convert from game units to image pixels before normalizing to `0.0`–`1.0`.
+</ResponseField>
+
+These values match the `pos_x`, `pos_y`, and `scale` fields in Valve's official `.txt` overview files shipped with the game.
+
+### Radar image
+
+`radar.png` is the top-down overhead image of the map. The frontend loads it at:
+
+```js
+radarImage={`./data/${mapData.name}/radar.png`}
+```
+
+The image is rendered inside a letterboxed container and all entity positions are projected relative to its rendered bounding rectangle, so the radar works correctly at any window size or zoom level.
+
+### Background image
+
+`background.png` is applied as the full-page CSS background when a valid map is active:
+
+```js
+document.body.style.backgroundImage = `url(./data/${map}/background.png)`;
+```
+
+It provides a blurred or themed backdrop that matches the current map.
+
+## Team and player color constants
+
+### Team enum
+
+```js
+export const teamEnum = {
+  none:             0,
+  spectator:        1,
+  terrorist:        2,
+  counterTerrorist: 3,
+};
+```
+
+Use `teamEnum.terrorist` (`2`) and `teamEnum.counterTerrorist` (`3`) when comparing `m_team` or `m_local_team` values from the WebSocket payload.
+
+### Player colors
+
+```js
+export const playerColors = [
+  "#84c8ed", // 0 — blue
+  "#009a7d", // 1 — green
+  "#eadd40", // 2 — yellow
+  "#df7d29", // 3 — orange
+  "#b72b92", // 4 — purple
+  "#ffffff", // 5 — white
+];
+```
+
+The `m_color` field on each player object is an index into this array. It is used to color the radar dot for teammates. Enemy dots are always rendered in red (`#FF4444`) regardless of `m_color`.
+
+<Note>
+The player color index is assigned by the game server and reflects the color shown on the in-game minimap. Index `0` (blue) is not the same as the CT team color — both T and CT players can have any of the six colors.
+</Note>
+
+## Grenade radius projection
+
+The `Grenade` component also uses the map scale to convert a game-unit smoke or fire radius into a pixel diameter for the aura circle:
+
+```js
+const radiusToPx = (gameUnits, imgWidth, scale) => {
+  if (!imgWidth || !scale) return 0;
+  return (gameUnits / scale / 1024) * imgWidth * 2;
+};
+```
+
+This applies the same scale and normalization logic as `getRadarPosition`, then multiplies by the rendered image width and by 2 to convert a radius to a diameter.

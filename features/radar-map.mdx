@@ -1,0 +1,89 @@
+---
+title: "Radar map: zoom, pan, fullscreen, and entity overlays"
+description: "Zoom, pan, and go fullscreen on a live map view. Player dots, grenade icons, and the bomb icon update in real time as the match unfolds."
+---
+
+The radar map is the heart of the CS2 WebRadar interface. It renders a top-down overhead image of the current map and overlays every live entity — players, grenades, and the bomb — updating continuously as game state flows in over WebSocket.
+
+## Map image
+
+The map image is loaded from `./data/${mapData.name}/radar.png` and letterboxed inside a fixed-aspect container. The background of the page also updates to `./data/${mapData.name}/background.png` when the active map changes. When the map changes mid-session, zoom and pan are automatically reset to their defaults.
+
+## Zoom
+
+Scroll the mouse wheel over the radar to zoom in or out. Each scroll step multiplies (or divides) the current zoom level by a factor of **1.18**.
+
+| Parameter | Value |
+|-----------|-------|
+| Minimum zoom | `1.0×` (no zoom) |
+| Maximum zoom | `6.0×` |
+| Step factor (`ZOOM_FACTOR`) | `1.18` per scroll tick |
+
+The zoom control buttons in the **bottom-right corner** of the radar provide an alternative to the scroll wheel:
+
+- **`−`** — zoom out one step
+- **`+`** — zoom in one step
+- **`{n}% ✕`** — visible only when zoom > 1×; shows the current zoom percentage and resets zoom and pan when clicked
+
+<Note>
+Clicking the `{n}% ✕` button resets the zoom level to `1.0×` and the pan offset to `{x: 0, y: 0}`, returning the map to its default centered view.
+</Note>
+
+## Pan
+
+When zoomed in, you can drag the map to pan:
+
+- **Desktop** — hold the left mouse button and drag
+- **Mobile / touch** — drag with one finger
+
+Pan is clamped so the map edge can never scroll past the container boundary — the map always fills the visible area.
+
+## Fullscreen
+
+Click the **fullscreen** button (bottom-right corner, visible when not already in fullscreen) to enter fullscreen mode. The radar uses the browser [Fullscreen API](https://developer.mozilla.org/en-US/docs/Web/API/Fullscreen_API) to expand to the full viewport.
+
+In fullscreen the layout changes:
+
+<Steps>
+  <Step title="Top bar overlays the map">
+    A semi-transparent bar appears at the top containing the **Share Radar** button, the latency indicator, and an **Exit** button to leave fullscreen.
+  </Step>
+  <Step title="Scoreboard moves above the map">
+    The scoreboard floats centered just below the top bar, overlaying the map image.
+  </Step>
+  <Step title="Player panels slide over the sides">
+    The T-side panel anchors to the left edge; the CT-side panel anchors to the right edge. Both panels scroll independently if there are more than five players.
+  </Step>
+  <Step title="Kill feed moves to the bottom-right">
+    The kill feed repositions to the bottom-right corner of the screen, above the zoom controls.
+  </Step>
+</Steps>
+
+Press **Esc** or click **Exit** to return to the normal windowed view.
+
+## Entity overlays
+
+All entities are rendered inside the same transformed wrapper as the map image, so they zoom and pan together seamlessly.
+
+<CardGroup cols={3}>
+  <Card title="Player dots" icon="circle-dot">
+    One dot per player, colored by team (ally colors vary per slot; enemies are red). A directional arrow shows the player's view angle. An optional FOV cone fans out in the facing direction.
+  </Card>
+  <Card title="Grenade icons" icon="burst">
+    Flashbangs, HEs, decoys, smokes, and molotovs appear as colored dots with optional type labels (FLB / HE / DCY / SMK / MOL). Deployed smokes render as full cloud overlays; active infernos render as animated fire overlays.
+  </Card>
+  <Card title="Bomb icon" icon="circle-exclamation">
+    The C4 icon tracks the bomb carrier or planted location. Color changes: green when defused (`#50904c`), blue when you are playing on the CT side (`#6492b4`), red otherwise (`#c90b0b`).
+  </Card>
+</CardGroup>
+
+## Coordinate projection
+
+World coordinates from the CS2 game server are mapped to normalized radar image coordinates using `getRadarPosition()` from `utilities/utilities.jsx`:
+
+```js
+x = (entityX - mapData.x) / mapData.scale / 1024
+y = ((entityY - mapData.y) / mapData.scale * -1.0) / 1024
+```
+
+The resulting `x` and `y` values are in the range `[0, 1]` and are multiplied by the rendered image pixel dimensions to produce the final screen position.
